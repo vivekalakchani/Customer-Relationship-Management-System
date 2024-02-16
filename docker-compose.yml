@@ -1,0 +1,102 @@
+version: '3.3'
+
+services:
+  postgres_db:
+    image: postgres:latest
+    restart: always
+    ports:
+      - '5434:5432'
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: crm
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rabbitmq-network
+
+  prospect:
+    build:
+      context: ./prospect 
+      dockerfile: Dockerfile
+    container_name: prospect
+    command: npm run start:dev
+    ports:
+      - '3001:3001'
+    depends_on:
+      - postgres_db
+      - rabbitmq
+    env_file:
+      - ./config/env/.env
+    volumes:
+      - ./prospect/src:/usr/app/src
+    networks:
+      - rabbitmq-network
+      
+  opportunity:
+    build:
+      context: ./opportunity 
+      dockerfile: Dockerfile
+    container_name: opportunity
+    command: npm run start:dev
+    ports:
+      - '3002:3002'
+    depends_on:
+      - postgres_db
+      - rabbitmq
+    env_file:
+      - ./config/env/.env
+    volumes:
+      - ./opportunity/src:/usr/app/src
+    networks:
+      - rabbitmq-network
+
+  customer:
+    build:
+      context: ./customer 
+      dockerfile: Dockerfile
+    container_name: customer
+    command: npm run start:dev
+    ports:
+      - '3003:3003'
+    depends_on:
+      - postgres_db
+      - rabbitmq
+    env_file:
+      - ./config/env/.env
+    volumes:
+      - ./customer/src:/usr/app/src
+    networks:
+      - rabbitmq-network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    container_name: pgadmin_container
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 3000
+    ports:
+      - '3000:3000'
+    networks:
+      - rabbitmq-network
+  
+  rabbitmq:
+    image: rabbitmq:management
+    ports:
+      - "5672:5672"  
+      - "15672:15672"  
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - rabbitmq-network
+
+networks:
+  rabbitmq-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
